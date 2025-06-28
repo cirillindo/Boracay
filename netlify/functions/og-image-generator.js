@@ -70,21 +70,6 @@ exports.handler = async (event, context) => {
   console.log('🔍 User-Agent:', userAgent);
   console.log('🔍 Is Bot Request:', isBotRequest);
 
-  // If it's not a bot, redirect to the actual page so the SPA loads
-  if (!isBotRequest) {
-    console.log('➡️ Not a bot, redirecting to:', `https://${event.headers.host}${path}`);
-    return {
-      statusCode: 302, // Found
-      headers: {
-        'Location': `https://${event.headers.host}${path}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-      body: '',
-    };
-  }
-  
   let htmlContent;
 
   try {
@@ -104,6 +89,19 @@ exports.handler = async (event, context) => {
     
     htmlContent = response.data;
     console.log('✅ Base HTML fetched successfully');
+
+    // If it's not a bot request, return the HTML content directly without modification
+    if (!isBotRequest) {
+      console.log('🔍 Not a bot request, returning unmodified HTML');
+      return {
+        statusCode: 200,
+        headers: { 
+          'Content-Type': 'text/html',
+          'Cache-Control': 'public, max-age=0, must-revalidate'
+        },
+        body: htmlContent,
+      };
+    }
   } catch (error) {
     console.error('❌ Error fetching base index.html:', error.message);
     // Provide a simple fallback HTML with basic OG tags
