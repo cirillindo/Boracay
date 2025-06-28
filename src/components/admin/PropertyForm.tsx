@@ -10,7 +10,7 @@ import {
   Camera, Bed, Sofa, Briefcase, ShowerHead, Scissors, Bath, Clock, CalendarClock, 
   Flame, Refrigerator, Coffee, UtensilsCrossed, Utensils, PawPrint, Key, Users, 
   Home, Users2, Luggage, Cigarette, Siren as Fire, DollarSign, Stars as Stairs, 
-  Armchair as Wheelchair, FileIcon 
+  Armchair as Wheelchair, FileIcon, Link as LinkIcon
 } from 'lucide-react';
 import { uploadImage, uploadPdf } from '../../lib/cloudinary';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
@@ -175,6 +175,16 @@ const PropertyForm: React.FC = () => {
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Property>();
 
   const isForRent = watch('is_for_rent');
+  const slug = watch('slug');
+
+  // Update OG URL when slug changes
+  useEffect(() => {
+    if (slug) {
+      const baseUrl = window.location.origin;
+      const ogUrl = `${baseUrl}/property/${slug}`;
+      setValue('og_url', ogUrl);
+    }
+  }, [slug, setValue]);
 
   useEffect(() => {
     if (id) {
@@ -237,6 +247,13 @@ const PropertyForm: React.FC = () => {
         if (data.map_coordinates) {
           const [lng, lat] = data.map_coordinates.coordinates;
           setMarkerPosition([lat, lng]);
+        }
+
+        // Set OG URL based on slug
+        if (data.slug) {
+          const baseUrl = window.location.origin;
+          const ogUrl = `${baseUrl}/property/${data.slug}`;
+          setValue('og_url', ogUrl);
         }
 
         // Load features
@@ -310,7 +327,6 @@ const PropertyForm: React.FC = () => {
     try {
       const uploadedUrl = await uploadImage(acceptedFiles[0]);
       setGridPhoto(uploadedUrl);
-      // Set both grid_photo and og_image to the same value
       setValue('grid_photo', uploadedUrl);
       setValue('og_image', uploadedUrl);
     } catch (err) {
@@ -431,7 +447,7 @@ const PropertyForm: React.FC = () => {
       };
 
       // Generate slug if not provided
-      const slug = data.slug || data.title
+      const finalSlug = data.slug || data.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
@@ -453,10 +469,10 @@ const PropertyForm: React.FC = () => {
         policy: data.policy || DEFAULT_POLICY,
         og_type: 'website', // Always set to website for properties
         og_locale: data.og_locale || 'en_PH',
-        og_url: `${window.location.origin}/property/${slug}`,
-        // Use grid photo as OG image if not explicitly set
+        // Use the form's og_url value if set, otherwise generate
+        og_url: data.og_url || `${window.location.origin}/property/${finalSlug}`,
         og_image: data.og_image || gridPhoto,
-        slug // Make sure slug is included in the data
+        slug: finalSlug
       };
 
       const { error: saveError } = id
@@ -620,7 +636,7 @@ const PropertyForm: React.FC = () => {
                   <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-500"></div>
                 ) : (
                   <>
-                    <ImageIcon className="w-10 h-10 text-gray-400 mb-3" />
+                    <ImageIcon className="w-10 w-10 text-gray-400 mb-3" />
                     <p className="text-gray-600">
                       {isDragActive
                         ? 'Drop the images here...'
@@ -967,7 +983,7 @@ const PropertyForm: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Maximum Occupancy
+                    Maximum Occupancy
                 </label>
                 <input
                   type="number"
@@ -1184,7 +1200,6 @@ const PropertyForm: React.FC = () => {
                 </p>
               </div>
 
-              {/* Slug Field - Properly Included */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Slug (URL Identifier)
@@ -1193,7 +1208,7 @@ const PropertyForm: React.FC = () => {
                   type="text"
                   {...register('slug', {
                     pattern: {
-                      value: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+                      value: /^[a-z0-9-]+$/,
                       message: "Only lowercase letters, numbers, and hyphens allowed"
                     }
                   })}
@@ -1234,6 +1249,29 @@ const PropertyForm: React.FC = () => {
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
                       placeholder="Brief, compelling description for social media"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      OG URL (Actual Property URL)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <LinkIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="url"
+                        {...register('og_url', { required: 'OG URL is required' })}
+                        className="mt-1 block w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                        placeholder="https://boracay.house/property/your-property"
+                      />
+                    </div>
+                    {errors.og_url && (
+                      <p className="mt-1 text-sm text-red-600">{errors.og_url.message}</p>
+                    )}
+                    <p className="mt-1 text-sm text-gray-500">
+                      The actual URL where this property will be accessed
+                    </p>
                   </div>
 
                   <div>
