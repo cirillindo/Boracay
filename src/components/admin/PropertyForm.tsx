@@ -430,6 +430,12 @@ const PropertyForm: React.FC = () => {
         rating: sanitizeNumericValue(data.rating) || 5, // Default to 5 if not provided
       };
 
+      // Generate slug if not provided
+      const slug = data.slug || data.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
       const propertyData = {
         ...sanitizedData,
         images,
@@ -447,9 +453,10 @@ const PropertyForm: React.FC = () => {
         policy: data.policy || DEFAULT_POLICY,
         og_type: 'website', // Always set to website for properties
         og_locale: data.og_locale || 'en_PH',
-        og_url: `${window.location.origin}/property/${id || ''}`,
+        og_url: `${window.location.origin}/property/${slug}`,
         // Use grid photo as OG image if not explicitly set
-        og_image: data.og_image || gridPhoto
+        og_image: data.og_image || gridPhoto,
+        slug // Make sure slug is included in the data
       };
 
       const { error: saveError } = id
@@ -1177,7 +1184,7 @@ const PropertyForm: React.FC = () => {
                 </p>
               </div>
 
-              {/* Slug Field */}
+              {/* Slug Field - Properly Included */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Slug (URL Identifier)
