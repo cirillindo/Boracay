@@ -10,6 +10,52 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Timeout for fetch requests in milliseconds
 const FETCH_TIMEOUT = 5000;
 
+// List of common crawler user agents (case-insensitive)
+const CRAWLER_USER_AGENTS = [
+  'googlebot',
+  'bingbot',
+  'yahoo! slurp',
+  'duckduckbot',
+  'baiduspider',
+  'yandexbot',
+  'facebot',
+  'facebookexternalhit',
+  'twitterbot',
+  'linkedinbot',
+  'pinterestbot',
+  'slackbot',
+  'whatsapp',
+  'discordbot',
+  'telegrambot',
+  'applebot',
+  'screaming frog',
+  'semrushbot',
+  'ahrefsbot',
+  'mj12bot',
+  'petalbot',
+  'seznambot',
+  'dotbot',
+  'exabot',
+  'msnbot',
+  'sogou spider',
+  'bytespider', // TikTok's crawler
+  'gptbot', // OpenAI's crawler
+  'claude-bot', // Anthropic's crawler
+  'perplexitybot', // Perplexity AI's crawler
+  'cohere-bot', // Cohere's crawler
+  'ai-bot', // Generic AI bot
+  'bot', // General bot identifier
+  'crawler', // General crawler identifier
+  'spider', // General spider identifier
+];
+
+// Function to check if the request is from a known crawler
+const isCrawler = (userAgent) => {
+  if (!userAgent) return false;
+  const lowerCaseUserAgent = userAgent.toLowerCase();
+  return CRAWLER_USER_AGENTS.some(crawler => lowerCaseUserAgent.includes(crawler));
+};
+
 exports.handler = async (event, context) => {
   console.log('🔍 OG Image Generator function started');
   console.log('🔍 Request path:', event.path);
@@ -18,6 +64,27 @@ exports.handler = async (event, context) => {
   console.log('🔍 Supabase Anon Key:', supabaseAnonKey ? 'Set (length: ' + supabaseAnonKey.length + ')' : 'Missing');
   
   const path = event.path;
+  const userAgent = event.headers['user-agent'] || '';
+  const isBotRequest = isCrawler(userAgent);
+
+  console.log('🔍 User-Agent:', userAgent);
+  console.log('🔍 Is Bot Request:', isBotRequest);
+
+  // If it's not a bot, redirect to the actual page so the SPA loads
+  if (!isBotRequest) {
+    console.log('➡️ Not a bot, redirecting to:', `https://${event.headers.host}${path}`);
+    return {
+      statusCode: 302, // Found
+      headers: {
+        'Location': `https://${event.headers.host}${path}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+      body: '',
+    };
+  }
+  
   let htmlContent;
 
   try {
