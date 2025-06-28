@@ -155,12 +155,6 @@ const LocationMarker: React.FC<{
   return <Marker position={position} />;
 };
 
-const OG_TYPES = [
-  { value: 'website', label: 'Website' },
-  { value: 'article', label: 'Article' },
-  { value: 'product', label: 'Product' }
-];
-
 const OG_LOCALES = [
   { value: 'en_PH', label: 'English (Philippines)' },
   { value: 'en_US', label: 'English (US)' },
@@ -191,6 +185,7 @@ const PropertyForm: React.FC = () => {
       setValue('is_for_sale', true);
       setValue('is_for_rent', false);
       setValue('rating', 5);
+      setValue('og_type', 'website'); // Always set to website for properties
 
       // Set default values for features
       Object.entries(FEATURES_CONFIG).forEach(([category, { items }]) => {
@@ -315,6 +310,8 @@ const PropertyForm: React.FC = () => {
     try {
       const uploadedUrl = await uploadImage(acceptedFiles[0]);
       setGridPhoto(uploadedUrl);
+      // Set both grid_photo and og_image to the same value
+      setValue('grid_photo', uploadedUrl);
       setValue('og_image', uploadedUrl);
     } catch (err) {
       setError('Error uploading grid photo');
@@ -381,6 +378,7 @@ const PropertyForm: React.FC = () => {
 
   const removeGridPhoto = () => {
     setGridPhoto('');
+    setValue('grid_photo', '');
     setValue('og_image', '');
   };
 
@@ -447,9 +445,10 @@ const PropertyForm: React.FC = () => {
         seo_image: gridPhoto,
         seo_keywords: seoKeywords,
         policy: data.policy || DEFAULT_POLICY,
-        og_type: data.og_type || 'website',
+        og_type: 'website', // Always set to website for properties
         og_locale: data.og_locale || 'en_PH',
-        og_url: data.og_url || `${window.location.origin}/property/${id || ''}`,
+        og_url: `${window.location.origin}/property/${id || ''}`,
+        // Use grid photo as OG image if not explicitly set
         og_image: data.og_image || gridPhoto
       };
 
@@ -1178,7 +1177,7 @@ const PropertyForm: React.FC = () => {
                 </p>
               </div>
 
-              {/* New Slug Field */}
+              {/* Slug Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Slug (URL Identifier)
@@ -1232,7 +1231,7 @@ const PropertyForm: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      OG Image URL
+                      OG Image (Uses Grid Photo by Default)
                     </label>
                     <input
                       type="url"
@@ -1247,48 +1246,18 @@ const PropertyForm: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      OG URL
+                      OG Locale
                     </label>
-                    <input
-                      type="url"
-                      {...register('og_url')}
+                    <select
+                      {...register('og_locale')}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                      placeholder="https://www.boracay.house/property/your-property"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        OG Type
-                      </label>
-                      <select
-                        {...register('og_type')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                      >
-                        {OG_TYPES.map(type => (
-                          <option key={type.value} value={type.value}>
-                            {type.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        OG Locale
-                      </label>
-                      <select
-                        {...register('og_locale')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                      >
-                        {OG_LOCALES.map(locale => (
-                          <option key={locale.value} value={locale.value}>
-                            {locale.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    >
+                      {OG_LOCALES.map(locale => (
+                        <option key={locale.value} value={locale.value}>
+                          {locale.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
