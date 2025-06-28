@@ -1,0 +1,17 @@
+# Redirect specific paths to Netlify Function for dynamic OG tags
+/blog/* /.netlify/functions/og-image-generator 200
+/property/* /.netlify/functions/og-image-generator 200
+/airbnb /.netlify/functions/og-image-generator 200
+/for-sale /.netlify/functions/og-image-generator 200
+/about /.netlify/functions/og-image-generator 200
+/blog /.netlify/functions/og-image-generator 200
+/contact /.netlify/functions/og-image-generator 200
+/guest-help /.netlify/functions/og-image-generator 200
+/vacation-rental-management /.netlify/functions/og-image-generator 200
+/payment /.netlify/functions/og-image-generator 200
+/payment-success /.netlify/functions/og-image-generator 200
+/privacy-policy /.netlify/functions/og-image-generator 200
+/we-do-better /.netlify/functions/og-image-generator 200
+/favorites /.netlify/functions/og-image-generator 200
+
+/* /index.html 200
