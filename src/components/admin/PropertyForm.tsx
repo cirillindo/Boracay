@@ -1178,6 +1178,30 @@ const PropertyForm: React.FC = () => {
                 </p>
               </div>
 
+              {/* New Slug Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Slug (URL Identifier)
+                </label>
+                <input
+                  type="text"
+                  {...register('slug', {
+                    pattern: {
+                      value: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+                      message: "Only lowercase letters, numbers, and hyphens allowed"
+                    }
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                  placeholder="e.g., beachfront-villa-diniwid"
+                />
+                {errors.slug && (
+                  <p className="mt-1 text-sm text-red-600">{errors.slug.message}</p>
+                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  Unique URL identifier for this property (auto-generated if empty)
+                </p>
+              </div>
+
               <div className="border-t border-amber-100 pt-6">
                 <h4 className="text-base font-medium text-amber-900 mb-4">Open Graph Tags (Social Sharing)</h4>
                 
@@ -1276,7 +1300,7 @@ const PropertyForm: React.FC = () => {
                     {watch('seo_title') || watch('title') || 'Page Title'}
                   </div>
                   <div className="text-[#006621] text-sm">
-                    {window.location.origin}/property/{id || 'property-url'}
+                    {window.location.origin}/property/{watch('slug') || id || 'property-url'}
                   </div>
                   <div className="text-sm text-gray-600 line-clamp-2">
                     {watch('seo_description') || 'Add a meta description to see how your page will appear in search results.'}
