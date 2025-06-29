@@ -87,7 +87,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
     
     // Use the production domain instead of window.location.origin
     const baseUrl = "https://boracay.house";
-    const propertyUrl = `${baseUrl}/${property.slug}`;
+    const propertyUrl = `${baseUrl}/property/${property.slug}`;
     
     navigator.clipboard.writeText(propertyUrl)
       .then(() => {
@@ -335,7 +335,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   }
 
   return (
-    <Link to={`/${property.slug}`}>
+    <Link to={`/property/${property.slug}`}>
       <CardContent />
     </Link>
   );
