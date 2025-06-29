@@ -8,7 +8,7 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Timeout for fetch requests in milliseconds
-const FETCH_TIMEOUT = 5000;
+const FETCH_TIMEOUT = 10000; // Increased to 10 seconds
 
 // List of common crawler user agents (case-insensitive)
 const CRAWLER_USER_AGENTS = [
@@ -56,6 +56,48 @@ const isCrawler = (userAgent) => {
   return CRAWLER_USER_AGENTS.some(crawler => lowerCaseUserAgent.includes(crawler));
 };
 
+// Function to validate URLs
+const isValidUrl = (url) => {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Function to get the best available OG image
+const getOgImage = (data, defaultImage) => {
+  if (!data) return defaultImage;
+  
+  // Check all possible image sources in priority order
+  const sources = [
+    data.og_image,
+    data.hero_image,
+    ...(Array.isArray(data.images) ? data.images : []),
+    defaultImage
+  ];
+
+  for (const source of sources) {
+    if (!source) continue;
+    
+    // Handle string URLs
+    if (typeof source === 'string' && isValidUrl(source)) {
+      return source;
+    }
+    
+    // Handle image objects
+    if (typeof source === 'object' && source !== null) {
+      if (source.url && isValidUrl(source.url)) {
+        return source.url;
+      }
+    }
+  }
+  
+  return defaultImage;
+};
+
 exports.handler = async (event, context) => {
   console.log('🔍 OG Image Generator function started');
   console.log('🔍 Request path:', event.path);
@@ -69,6 +111,30 @@ exports.handler = async (event, context) => {
 
   console.log('🔍 User-Agent:', userAgent);
   console.log('🔍 Is Bot Request:', isBotRequest);
+  console.log('🔍 Full path being processed:', path);
+
+  // Check if this is a property page (either /property/slug or direct /slug format)
+  const isPropertyPage = path.startsWith('/property/') || 
+                         (path.match(/^\/[^\/]+$/) && 
+                          !path.match(/^\/(about|airbnb|for-sale|blog|contact|guest-help|vacation-rental-management|payment|payment-success|privacy-policy|we-do-better|favorites|admin)$/));
+  
+  console.log('🔍 Is Property Page:', isPropertyPage);
+  
+  if (isPropertyPage) {
+    console.log('🔍 Processing as property page');
+    
+    // Extract slug from path
+    let slug;
+    if (path.startsWith('/property/')) {
+      const parts = path.split('/');
+      slug = parts[parts.length - 1]; // Last part is the slug
+    } else {
+      slug = path.substring(1); // Remove leading slash
+    }
+    
+    console.log('🔍 Extracted property slug:', slug);
+    console.log('🔍 Will query Supabase for property with slug:', slug);
+  }
 
   let htmlContent;
 
@@ -104,6 +170,13 @@ exports.handler = async (event, context) => {
     }
   } catch (error) {
     console.error('❌ Error fetching base index.html:', error.message);
+    console.error('❌ Detailed error:', {
+      message: error.message,
+      path: path,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    
     // Provide a simple fallback HTML with basic OG tags
     htmlContent = `
       <!DOCTYPE html>
@@ -173,6 +246,7 @@ exports.handler = async (event, context) => {
 
         if (error) {
           console.error('❌ Supabase error fetching blog post:', error.message);
+          console.error('❌ Error details:', JSON.stringify(error, null, 2));
           throw error;
         }
 
@@ -224,6 +298,7 @@ exports.handler = async (event, context) => {
       }
       
       console.log('🔍 Property slug:', slug);
+      console.log('🔍 Attempting to fetch property data for slug:', slug);
 
       // Fetch property data from Supabase with timeout
       console.log('🔍 Fetching property data from Supabase');
@@ -247,6 +322,7 @@ exports.handler = async (event, context) => {
 
       if (error) {
         console.error('❌ Supabase error fetching property:', error.message);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
         throw error;
       }
 
@@ -258,19 +334,15 @@ exports.handler = async (event, context) => {
         ogTitle = data.og_title || data.seo_title || data.title || ogTitle;
         ogDescription = data.og_description || data.seo_description || (data.description ? data.description.slice(0, 160).replace(/<[^>]*>/g, '') : ogDescription);
         
-        // Check for og_image first, then hero_image, then first image from images array
-        if (data.og_image) {
-          ogImage = data.og_image;
-        } else if (data.hero_image) {
-          ogImage = data.hero_image;
-        } else if (data.images && data.images.length > 0) {
-          // Handle both string arrays and object arrays
-          if (typeof data.images[0] === 'string') {
-            ogImage = data.images[0];
-          } else if (typeof data.images[0] === 'object' && data.images[0] !== null && data.images[0].url) {
-            ogImage = data.images[0].url;
-          }
-        }
+        // Use the improved image selection function
+        console.log('🔍 Determining OG image from property data:');
+        console.log('- og_image:', data.og_image);
+        console.log('- hero_image:', data.hero_image);
+        console.log('- images array:', JSON.stringify(data.images));
+        
+        const defaultImage = "https://res.cloudinary.com/dq3fftsfa/image/upload/v1749293212/05_marketing_copy_xqzpsf.jpg";
+        ogImage = getOgImage(data, defaultImage);
+        console.log('✅ Selected OG image:', ogImage);
         
         ogUrl = data.og_url || data.canonical_url || `https://${event.headers.host}${path}`;
         ogType = data.og_type || "website";
@@ -450,9 +522,14 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('❌ Error fetching data for OG tags:', error.message);
-    if (error.stack) {
-      console.error('❌ Stack trace:', error.stack);
-    }
+    console.error('❌ Detailed error:', {
+      message: error.message,
+      path: path,
+      slug: path.startsWith('/property/') ? path.split('/').pop() : path.substring(1),
+      stack: error.stack,
+      response: error.response?.data
+    });
+    
     // Fallback to default OG tags if data fetching fails
   }
 
@@ -478,6 +555,12 @@ exports.handler = async (event, context) => {
     console.log('✅ OG image is accessible. Status:', imageResponse.status);
   } catch (error) {
     console.error('❌ Error accessing OG image:', error.message);
+    console.error('❌ Detailed error:', {
+      message: error.message,
+      imageUrl: ogImage,
+      stack: error.stack,
+      response: error.response?.data
+    });
     console.log('⚠️ Falling back to default image');
     ogImage = "https://res.cloudinary.com/dq3fftsfa/image/upload/v1749293212/05_marketing_copy_xqzpsf.jpg";
   }
@@ -535,6 +618,10 @@ exports.handler = async (event, context) => {
     console.log('✅ HTML head content replaced successfully');
   } catch (error) {
     console.error('❌ Error replacing HTML head content:', error.message);
+    console.error('❌ Detailed error:', {
+      message: error.message,
+      stack: error.stack
+    });
   }
 
   // Log the final OG tags for debugging
