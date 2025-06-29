@@ -92,7 +92,7 @@ const PropertyCarousel: React.FC<PropertyCarouselProps> = ({ currentPropertyId }
   };
 
   const handlePropertyClick = (property: Property) => {
-    navigate(`/${property.slug}`);
+    navigate(`/property/${property.slug}`);
     window.scrollTo(0, 0);
   };
 
